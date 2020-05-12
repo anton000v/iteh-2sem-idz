@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>idz</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <h1>Добавьте данные в бд:</h1>
+    <p>
+        <p>Добавльте новое поле в форму:</p>
+        <label for="field_name">Название нового поля:</label>
+        <input type="text" name="field_name" id="field_name">
+        <button onclick="addField('add1','field_name');">Добавить</button>
+    </p>
+    <form name='postForm'>
+        <div id="add1" class="add">
+        <p>
+            <label for="owner">Владелец записи: </label>
+            <input type="text" name="owner" id="owner" >
+        </p>
+        </div>
+    </form>
+    <button onclick="postField();">Отправить</button>
+    <hr>
+    <div id="GetRecords">
+        <label for="searchby">Поиск по полю: </label>
+            <input type="text" name="searchby" id="searchby" >
+        <label for="searchfor">Ищем: </label>
+            <input type="text" name="searchfor" id="searchfor" >
+        <button onclick="getRecords();">Поиск</button>
+        <div id="records">
+
+        </div>
+    </div>
+
+    <hr>
+    <div id="updateRecord">
+
+        <p>
+            <p>Добавьте новое поле в форму:</p>
+            <label for="field_name2">Название поля:</label>
+            <input type="text" name="field_name2" id="field_name2">
+            <button onclick="addField('add2','field_name2');">Добавить</button>
+        </p>
+        <form name="updateForm">
+            <div id="add2" class="add">
+                <p>
+                    <label for="update_searchby">Поиск по полю: </label>
+                    <input type="text" name="update_searchby" id="update_searchby" >
+                    <label for="update_searchfor">Значение: </label>
+                    <input type="text" name="update_searchfor" id="update_searchfor" >
+                </p>
+                </div>
+        </form>
+        <button onclick="updateRecords();">Обновить</button>
+    </div>
+    <div>
+        <p>
+            <p>Удалить запись по критерию:</p>
+            <label for="field_name_delete">Название поля:</label>
+            <input type="text" name="field_name_delete" id="field_name_delete">
+            <label for="field_value_delete">Значение поля:</label>
+            <input type="text" name="field_value_delete" id="field_value_delete">
+        </p>
+        <button onclick="deleteRecords();">Удалить</button>
+    </div>
+
+    <script>
+        function postField(){
+            form = document.forms.postForm.elements;
+            // console.log(form);
+            d = {};
+            for(let i=0; i <form.length; i++){
+                if(!form[i].value){
+                    alert('Введите все значения!');
+                    return;
+                }
+                d[form[i].name.replace(/\s/ig, '-')] = form[i].value;
+            }
+            console.log(d);
+            
+            user = JSON.stringify(d);
+            let request = new XMLHttpRequest();
+            // посылаем запрос на адрес "/user"
+             request.open("POST", "/insert-record", true);   
+             request.setRequestHeader("Content-Type", "application/json");
+             request.addEventListener("load", function () {
+                // получаем и парсим ответ сервера
+                 let resp = JSON.parse(request.response);
+                 alert(resp.success);
+                //  alert(receivedUser.test);
+                //  console.log(receivedUser.userName, "-", receivedUser.userAge);   // смотрим ответ сервера
+             });
+             request.send(user);
+            
+            }
+
+        function addField(div_name, field_name){
+            field_name = $(`#${field_name}`).val();
+            $(`#${div_name}`).append(`<p><label>${field_name}: </label><input type="text" name="${field_name}"></p>`);       
+            }
+
+        function getRecords(){
+            let xhr = new XMLHttpRequest();
+            search_field = $("#searchby").val().trim();
+            search_value = $("#searchfor").val().trim();
+            // 2. Настраиваем его: GET-запрос по URL /article/.../load
+            xhr.open('GET', `/get-records?${search_field}=${search_value}`);
+
+            // 3. Отсылаем запрос
+            xhr.send();
+
+            // 4. Этот код сработает после того, как мы получим ответ сервера
+            xhr.onload = function() {
+            if (xhr.status != 200) { // анализируем HTTP-статус ответа, если статус не 200, то произошла ошибка
+                alert(`Ошибка ${xhr.status}: ${xhr.statusText}`); // Например, 404: Not Found
+            } else { // если всё прошло гладко, выводим результат
+                // alert(`Готово, получили ${xhr.response} байт`); // response -- это ответ сервера
+                let resp = JSON.parse(xhr.response);
+                console.log(resp);
+                r_f =  $("#records");
+                r_f.empty();
+                
+                for(element in resp.result){
+                r_f.append("<p>"); 
+                console.log(resp.result[element]);
+                // r_f.append(JSON.stringify(resp.result[element]));
+                for(k in resp.result[element]){
+                    r_f.append(k+" : "+JSON.stringify(resp.result[element][k])+", ");
+                }
+                r_f.append("</p>"); 
+                }
+                
+            }
+            };
+        }
+
+        function updateRecords(){
+            form = document.forms.updateForm.elements;
+            search_by = $("#update_searchby").val().trim();
+            search_for = $("#update_searchfor").val().trim();
+            d = {};
+            d['find'] = {};
+            d['find'][search_by] = search_for;
+            d['set'] = {};
+            for(let i=0; i <form.length; i++){
+                if(!form[i].value){
+                    alert('Введите все значения!');
+                    return;
+                }
+                if(form[i].value == search_by || form[i].value == search_for){
+                    continue;
+                }
+                d['set'][form[i].name.replace(/\s/ig, '-')] = form[i].value;
+            }
+            console.log(d);
+            
+            data = JSON.stringify(d);
+            let request = new XMLHttpRequest();
+      
+             request.open("POST", "/update-records", true);   
+             request.setRequestHeader("Content-Type", "application/json");
+             request.addEventListener("load", function () {
+
+                 let resp = JSON.parse(request.response);
+                 alert(resp.success);
+                
+             });
+             request.send(data);
+        }
+
+        function deleteRecords(){
+            let xhr = new XMLHttpRequest();
+            delete_field = $("#field_name_delete").val().trim();
+            delete_value = $("#field_value_delete").val().trim();
+            // 2. Настраиваем его: GET-запрос по URL /article/.../load
+            xhr.open('GET', `/delete-records?${delete_field}=${delete_value}`);
+
+            // 3. Отсылаем запрос
+            xhr.send();
+
+            // 4. Этот код сработает после того, как мы получим ответ сервера
+            xhr.onload = function() {
+            if (xhr.status != 200) { // анализируем HTTP-статус ответа, если статус не 200, то произошла ошибка
+                alert(`Ошибка ${xhr.status}: ${xhr.statusText}`); // Например, 404: Not Found
+            } else { // если всё прошло гладко, выводим результат
+                // alert(`Готово, получили ${xhr.response} байт`); // response -- это ответ сервера
+                console.log(xhr.response);
+                console.log(JSON.parse(xhr.response));
+                let resp = JSON.parse(xhr.response);
+                alert(resp.success);
+            }
+            };
+        }
+    </script>
+</body>
+</html>
